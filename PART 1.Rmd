@@ -1,0 +1,211 @@
+---
+title: "STAT1378 Part I Report"
+author: "ADAB GILL"
+output:
+  pdf_document:
+    keep_tex: true
+    latex_engine: xelatex
+    pandoc_args: ["--citeproc"]
+bibliography: "references.bib"
+link-citations: true
+---
+
+# Abstract
+
+This report examines the relationships among height, weight, gender, and physical activity levels within a sample dataset of men and women aged 26–45.
+The analysis utilizes linear regression, t-tests, and chi-square tests to answer questions about linear relationships, mean differences, and associations [@Xie2015].
+
+# Introduction
+
+The study investigates three main questions: 1.
+Is there a linear relationship between height and weight?
+2.
+Does mean height differ between males and females?
+3.
+Is there an association between gender and physical activity level?
+
+Statistical methods like linear regression, t-tests, and chi-squared tests are employed, aiming to answer these questions rigorously.
+
+# Methods
+
+## Data Description
+
+The dataset includes 1000 observations, each with the following variables: - **ID**: Unique identifier for each participant.
+- **Gender**: Male or Female.
+- **Height**: Participant height in centimeters.
+- **Weight**: Participant weight in kilograms.
+- **Physical Activity**: Level of physical activity (None, Moderate, Intense).
+
+## Statistical Tests
+
+-   **Linear Regression**: To investigate the relationship between height and weight.
+-   **t-Test**: To compare mean heights of males and females.
+-   **Chi-squared Test**: To examine the association between gender and physical activity.
+
+# Analysis and R Code
+
+## Question 1: Linear Relationship between Height and Weight
+
+```{r, tidy = TRUE, echo = FALSE, include = FALSE}
+# Run the following libraries
+install.packages(c("rmarkdown", "knitr", "tidyverse", 
+                   "kableExtra", "bibtex", "tinytex", "dplyr", "readr", 
+                   "ggplot2", "knitr", "gridExtra"))
+library(rmarkdown)
+library(knitr)
+library(tidyverse)
+library(kableExtra)
+library(bibtex)
+library(tinytex)
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(gridExtra)
+
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+
+```{r}
+options(tinytex.verbose = TRUE)
+```
+
+```{r, linear-model, message=FALSE, fig.align="center", fig.width=6, fig.height=4}
+# Load data
+data <- read.csv("project.csv")
+
+# Linear regression model
+height_weight_model <- lm(weight ~ height, data = data)
+summary(height_weight_model)
+model_summary <- summary(height_weight_model)
+
+# Extract coefficients table and convert to data frame
+coefficients_df <- as.data.frame(model_summary$coefficients)
+colnames(coefficients_df) <- c("Estimate", "Std_Error", "t_value", "p_value")
+
+# Display the summary table using kable without complex LaTeX commands
+kable(coefficients_df, format = "latex", booktabs = TRUE, 
+      caption = "Linear Regression Summary for Height and Weight") %>%
+  kable_styling(position = "center")
+
+# Plot with regression line
+ggplot(data, aes(x = height, y = weight)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  labs(title = "Relationship between Height and Weight",
+       x = "Height (cm)", y = "Weight (kg)") +
+  theme_minimal(base_size = 10)  # Ensures readability in PDF
+```
+
+## Results for Linear Regression
+
+Based on the linear regression analysis, a significant relationship was found between height and weight, with a p-value of `r summary(height_weight_model)$coefficients[2,4]`.
+The slope of the line suggests that with each centimeter increase in height, weight changes by approximately `r round(coef(height_weight_model)[2], 2)` kg [@Moore2016].
+
+## Question 2: Difference in Mean Height between Males and Females
+
+```{r, tidy = TRUE}
+# Perform t-test for mean height comparison
+t_test_result <- t.test(height ~ gender, data = data)
+
+# Create a data frame with t-test results
+t_test_df <- data.frame(
+  Statistic = t_test_result$statistic,
+  Parameter = t_test_result$parameter,
+  p_value = t_test_result$p.value,
+  Confidence_Interval = paste(round(t_test_result$conf.int[1], 2), 
+                              "-", round(t_test_result$conf.int[2], 2)),
+  Mean_Female = t_test_result$estimate[1],
+  Mean_Male = t_test_result$estimate[2]
+)
+
+# Display table with kable
+kable(t_test_df, caption = "t-Test Summary for Mean Height Comparison") %>%
+  kable_styling("striped", full_width = FALSE)
+```
+
+```{r height-boxplot-density, fig.width=8, fig.height=5, message=FALSE, warning=FALSE}
+
+# Boxplot for mean height by gender
+ggplot(data, aes(x = gender, y = height, fill = gender)) +
+  geom_boxplot(alpha = 0.7) +
+  labs(title = "Boxplot of Heights by Gender", x = "Gender", y = "Height (cm)") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "none")
+
+```
+
+
+## Results for t-Test
+
+The Welch Two Sample t-test shows a statistically significant difference in mean height between males and females, with a t-value of -39.77 and a p-value less than 2.2e-16.
+This result suggests that the mean height of males (178.13 cm) is significantly greater than the mean height of females (167.98 cm).
+The 95% confidence interval for the difference in means is between -10.65 and -9.65 cm, indicating that males are, on average, taller than females in this sample.
+Since the p-value is much smaller than 0.05, we reject the null hypothesis and conclude that there is a statistically significant difference in height by gender.
+The negative t-value and confidence interval (both in the negative range) confirm that males are, on average, taller than females.
+The interval provides an estimated range for the difference in means, reinforcing that males are taller on average [@Agresti2018].
+
+The hypotheses for the chi-squared test are:
+
+$$
+H_0: \text{Gender and Physical Activity Level are independent}
+$$
+
+$$
+H_1: \text{Gender and Physical Activity Level are not independent}
+$$
+
+## Question 3: Association between Gender and Physical Activity Level
+
+```{r}
+# Create a contingency table for Gender and Physical Activity
+activity_gender_table <- table(data$gender, data$phys)
+
+# Perform chi-squared test
+chi_square_result <- chisq.test(activity_gender_table)
+
+# Create a data frame for chi-squared test results
+chi_square_df <- data.frame(
+  Statistic = chi_square_result$statistic,
+  Degrees_of_Freedom = chi_square_result$parameter,
+  p_value = chi_square_result$p.value
+)
+
+# Display table with kable
+kable(chi_square_df, caption = "Chi-Squared Test Summary for Gender and Physical Activity") %>%
+  kable_styling("striped", full_width = FALSE)
+```
+
+```{r gender-activity-barplot, fig.width=8, fig.height=5, message=FALSE, warning=FALSE}
+# Stacked bar plot for physical activity by gender
+barplot <- ggplot(data, aes(x = gender, fill = phys)) +
+  geom_bar(position = "fill") +  # "fill" makes it proportional within each gender
+  labs(title = "Proportion of Physical Activity Levels by Gender",
+       x = "Gender", y = "Proportion", fill = "Physical Activity") +
+  scale_y_continuous(labels = scales::percent) +  # Show y-axis as percentages
+  theme_minimal(base_size = 12)
+
+# Display the bar plot
+barplot
+```
+
+## Results for Chi-squared Test
+
+The chi-squared test for association between gender and physical activity level shows a chi-squared value of 3.23 with 2 degrees of freedom and a p-value of 0.1993.
+Since the p-value is greater than 0.05, we fail to reject the null hypothesis.
+This suggests that there is no statistically significant association between gender and physical activity level in this sample.
+
+The p-value of 0.1993 is above the typical significance level of 0.05, indicating that any observed differences in physical activity level by gender are likely due to random chance.
+Failing to reject the null hypothesis implies that gender does not have a significant association with physical activity level in this data set.
+
+# Conclusion
+
+1.  **Height and Weight Relationship**: The linear regression analysis indicates a statistically significant relationship between height and weight.
+    This suggests that taller individuals in the sample tend to have higher weights, supporting a positive association between these two variables.
+
+2.  **Gender Differences in Height**: The t-test results show a statistically significant difference in mean height between males and females, with males being taller on average.
+    This finding is consistent with general observations of height differences by gender.
+
+3.  **Gender and Physical Activity Level**: The chi-squared test for association between gender and physical activity level does not indicate a statistically significant relationship.
+    This implies that, within this sample, physical activity levels do not differ significantly between males and females.
+
+# References
